@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect, notFound } from 'next/navigation'
 import Link from 'next/link'
 import CompanyDetailClient from '@/components/CompanyDetailClient'
+import CompanyActions from '@/components/CompanyActions'
 
 export default async function CompanyDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
@@ -29,11 +30,14 @@ export default async function CompanyDetailPage({ params }: { params: Promise<{ 
   return (
     <div className="min-h-screen bg-gray-50">
       <header className="bg-white shadow-sm">
-        <div className="max-w-6xl mx-auto px-4 py-4 flex items-center gap-4">
-          <Link href="/dashboard" className="text-gray-400 hover:text-gray-600 transition-colors">
-            ← 戻る
-          </Link>
-          <h1 className="text-xl font-bold text-gray-800">{company.name}</h1>
+        <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <Link href="/dashboard" className="text-gray-400 hover:text-gray-600 transition-colors">
+              ← 戻る
+            </Link>
+            <h1 className="text-xl font-bold text-gray-800">{company.name}</h1>
+          </div>
+          <CompanyActions companyId={company.id} />
         </div>
       </header>
 
