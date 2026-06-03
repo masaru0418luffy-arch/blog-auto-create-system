@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 
 interface Blog {
   id: string
@@ -29,6 +30,7 @@ export default function CompanyDetailClient({ company, initialBlogs }: Props) {
   const [generating, setGenerating] = useState(false)
   const [error, setError] = useState('')
   const [copied, setCopied] = useState<string | null>(null)
+  const router = useRouter()
 
   const handleGenerate = async () => {
     setGenerating(true)
@@ -46,6 +48,7 @@ export default function CompanyDetailClient({ company, initialBlogs }: Props) {
       if (!res.ok) throw new Error(data.error || 'ブログ生成に失敗しました')
 
       setBlogs(data.blogs)
+      router.refresh() // サイドバーの履歴を更新
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'ブログ生成に失敗しました'
       setError(message)

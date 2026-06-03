@@ -114,15 +114,24 @@ ${BLOG_STYLE_REFERENCE}
       return NextResponse.json({ error: 'AI応答のパースに失敗しました' }, { status: 500 })
     }
 
-    // Delete old blogs
-    await supabase.from('generated_blogs').delete().eq('company_id', companyId)
+    // 生成バッチレコードを作成
+    const { data: generation, error: genError } = await supabase
+      .from('blog_generations')
+      .insert({ company_id: companyId })
+      .select()
+      .single()
 
-    // Insert new blogs
+    if (genError || !generation) {
+      return NextResponse.json({ error: '履歴レコードの作成に失敗しました' }, { status: 500 })
+    }
+
+    // 新しいブログを挿入（旧記事は削除しない）
     const { data: insertedBlogs, error: insertError } = await supabase
       .from('generated_blogs')
       .insert(
         blogs.map((b) => ({
           company_id: companyId,
+          generation_id: generation.id,
           title: b.title,
           body: b.body,
           category: b.category,
