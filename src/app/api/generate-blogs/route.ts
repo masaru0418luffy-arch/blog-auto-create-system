@@ -2,8 +2,6 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import OpenAI from 'openai'
 
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
-
 const BLOG_STYLE_REFERENCE = `
 【参考ブログスタイル】
 以下のような文体・構成・トーンで記事を作成してください：
@@ -35,6 +33,8 @@ export async function POST(req: NextRequest) {
   try {
     const { companyId } = await req.json()
     if (!companyId) return NextResponse.json({ error: 'companyId required' }, { status: 400 })
+
+    const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
 
     const supabase = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
