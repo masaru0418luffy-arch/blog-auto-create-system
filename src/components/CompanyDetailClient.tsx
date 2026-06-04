@@ -72,6 +72,7 @@ export default function CompanyDetailClient({ company, initialBlogs }: Props) {
   const handleGenerate = async () => {
     setGenerating(true)
     setError('')
+    setImageErrors({})
 
     try {
       const res = await fetch('/api/generate-blogs', {
@@ -85,15 +86,10 @@ export default function CompanyDetailClient({ company, initialBlogs }: Props) {
       const newBlogs: Blog[] = data.blogs
       setBlogs(newBlogs)
       router.refresh()
-      setGenerating(false)
-
-      // ブログ表示後、画像を順番に自動生成
-      for (const blog of newBlogs) {
-        await generateImageForBlog(blog)
-      }
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'ブログ生成に失敗しました'
       setError(message)
+    } finally {
       setGenerating(false)
     }
   }
@@ -134,12 +130,12 @@ export default function CompanyDetailClient({ company, initialBlogs }: Props) {
           )}
         </button>
         {generating && (
-          <p className="text-sm text-gray-500 mt-3">GPT-4oが12本の記事を生成しています。完了後、自動で画像も生成します。</p>
+          <p className="text-sm text-gray-500 mt-3">GPT-4oが12本の記事を生成しています。しばらくお待ちください。</p>
         )}
         {imageGeneratingCount > 0 && (
           <p className="text-sm text-purple-600 mt-3 flex items-center justify-center gap-2">
             <span className="animate-spin inline-block">⟳</span>
-            DALL-E 3で画像を生成中...（残り {imageGeneratingCount}枚）
+            DALL-E 3で画像を生成中...（約15〜20秒）
           </p>
         )}
       </div>

@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import OpenAI from 'openai'
 
+export const maxDuration = 60
+
 export async function POST(req: NextRequest) {
   try {
     const { blogId, title, category, companyId } = await req.json()
@@ -20,18 +22,17 @@ Theme: ${title}. Category: ${category}.
 Realistic, clean, bright lighting. Japanese residential style.
 No text, no logos, no faces.`
 
-    // DALL-E 2（高速・512x512でタイムアウト回避）
     const response = await openai.images.generate({
-      model: 'dall-e-2',
+      model: 'dall-e-3',
       prompt,
       n: 1,
-      size: '512x512',
+      size: '1792x1024',
+      quality: 'standard',
     })
 
     const imageUrl = response.data?.[0]?.url
     if (!imageUrl) throw new Error('画像URLが取得できませんでした')
 
-    // OpenAI URLを直接DBに保存（Supabaseアップロード省略で高速化）
     await supabase
       .from('generated_blogs')
       .update({ image_url: imageUrl })
