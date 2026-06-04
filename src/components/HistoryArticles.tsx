@@ -1,12 +1,14 @@
 'use client'
 
 import { useState } from 'react'
+import Image from 'next/image'
 
 interface Blog {
   id: string
   title: string
   body: string
   category: string
+  image_url?: string | null
 }
 
 interface Props {
@@ -48,30 +50,47 @@ export default function HistoryArticles({ blogs }: Props) {
 
       <div className="grid gap-4">
         {blogs.map((blog, index) => (
-          <div key={blog.id} className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-            <div className="flex items-start justify-between mb-3">
-              <div className="flex items-center gap-3">
-                <span className="text-xs font-bold text-white bg-blue-600 rounded-full w-6 h-6 flex items-center justify-center">
-                  {index + 1}
-                </span>
-                <span className="bg-blue-50 text-blue-700 text-xs px-3 py-1 rounded-full font-medium">
-                  {blog.category}
-                </span>
+          <div key={blog.id} className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+            {blog.image_url ? (
+              <div className="relative w-full h-52">
+                <Image
+                  src={blog.image_url}
+                  alt={blog.title}
+                  fill
+                  className="object-cover"
+                  sizes="(max-width: 768px) 100vw, 800px"
+                />
               </div>
-              <button
-                onClick={() => copyToClipboard(`${blog.title}\n\n${blog.body}`, blog.id)}
-                className="text-xs text-gray-500 border border-gray-200 px-3 py-1.5 rounded-lg hover:bg-gray-50 transition-colors"
-              >
-                {copied === blog.id ? '✓ コピー済み' : 'コピー'}
-              </button>
-            </div>
+            ) : (
+              <div className="w-full h-16 bg-gray-50 flex items-center justify-center border-b border-gray-100">
+                <span className="text-xs text-gray-300">画像なし</span>
+              </div>
+            )}
 
-            <h3 className="font-bold text-gray-800 text-base mb-3">{blog.title}</h3>
-            <p className="text-gray-600 text-sm leading-relaxed whitespace-pre-line">{blog.body}</p>
+            <div className="p-6">
+              <div className="flex items-start justify-between mb-3">
+                <div className="flex items-center gap-3">
+                  <span className="text-xs font-bold text-white bg-blue-600 rounded-full w-6 h-6 flex items-center justify-center flex-shrink-0">
+                    {index + 1}
+                  </span>
+                  <span className="bg-blue-50 text-blue-700 text-xs px-3 py-1 rounded-full font-medium">
+                    {blog.category}
+                  </span>
+                </div>
+                <button
+                  onClick={() => copyToClipboard(`${blog.title}\n\n${blog.body}`, blog.id)}
+                  className="text-xs text-gray-500 border border-gray-200 px-3 py-1.5 rounded-lg hover:bg-gray-50 transition-colors"
+                >
+                  {copied === blog.id ? '✓ コピー済み' : 'コピー'}
+                </button>
+              </div>
 
-            <div className="mt-4 pt-4 border-t border-gray-50 flex justify-between">
-              <p className="text-xs text-gray-300">画像：未設定（後日追加）</p>
-              <p className="text-xs text-gray-400">{blog.body.length}文字</p>
+              <h3 className="font-bold text-gray-800 text-base mb-3">{blog.title}</h3>
+              <p className="text-gray-600 text-sm leading-relaxed whitespace-pre-line">{blog.body}</p>
+
+              <div className="mt-4 pt-4 border-t border-gray-50 flex justify-end">
+                <p className="text-xs text-gray-400">{blog.body.length}文字</p>
+              </div>
             </div>
           </div>
         ))}
