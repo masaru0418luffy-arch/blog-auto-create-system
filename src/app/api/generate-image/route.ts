@@ -2,8 +2,6 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import OpenAI from 'openai'
 
-export const maxDuration = 60
-
 export async function POST(req: NextRequest) {
   try {
     const { blogId, title, category, companyId } = await req.json()
@@ -17,53 +15,29 @@ export async function POST(req: NextRequest) {
       process.env.SUPABASE_SERVICE_ROLE_KEY!
     )
 
-    const prompt = `Professional, high-quality photograph for a Japanese home renovation and construction company blog.
-Theme: ${title}
-Category: ${category}
-Requirements:
-- Realistic, professional photography style
-- Depicts ${category} work at a Japanese-style residential property
-- Clean, bright natural lighting
-- No text, no logos, no visible faces
-- Suitable for a business blog header image
-- Japanese architectural aesthetics`
+    const prompt = `Professional photograph for a Japanese home renovation company blog.
+Theme: ${title}. Category: ${category}.
+Realistic, clean, bright lighting. Japanese residential style.
+No text, no logos, no faces.`
 
+    // DALL-E 2（高速・Vercel Hobbyプラン対応）
     const response = await openai.images.generate({
-      model: 'dall-e-3',
+      model: 'dall-e-2',
       prompt,
       n: 1,
-      size: '1792x1024',
-      quality: 'standard',
+      size: '1024x1024',
     })
 
-    const tempUrl = response.data?.[0]?.url
-    if (!tempUrl) throw new Error('画像URLが取得できませんでした')
+    const imageUrl = response.data?.[0]?.url
+    if (!imageUrl) throw new Error('画像URLが取得できませんでした')
 
-    // Download image from DALL-E
-    const imageResponse = await fetch(tempUrl)
-    const imageBuffer = Buffer.from(await imageResponse.arrayBuffer())
-
-    // Upload to Supabase Storage for permanent URL
-    const fileName = `${companyId}/${Date.now()}_${blogId}.png`
-    const { data: uploadData, error: uploadError } = await supabase.storage
-      .from('blog-images')
-      .upload(fileName, imageBuffer, { contentType: 'image/png' })
-
-    if (uploadError || !uploadData) throw new Error('画像のアップロードに失敗しました')
-
-    const { data: urlData } = supabase.storage
-      .from('blog-images')
-      .getPublicUrl(uploadData.path)
-
-    const permanentUrl = urlData.publicUrl
-
-    // Save URL to DB
+    // OpenAI URLを直接DBに保存（Supabaseアップロード省略で高速化）
     await supabase
       .from('generated_blogs')
-      .update({ image_url: permanentUrl })
+      .update({ image_url: imageUrl })
       .eq('id', blogId)
 
-    return NextResponse.json({ imageUrl: permanentUrl })
+    return NextResponse.json({ imageUrl })
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : '画像生成に失敗しました'
     return NextResponse.json({ error: message }, { status: 500 })
