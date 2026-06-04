@@ -9,6 +9,14 @@ const nextConfig: NextConfig = {
         hostname: 'sqfewthfhmvkbzcnkuhh.supabase.co',
         pathname: '/storage/v1/object/public/**',
       },
+      {
+        protocol: 'https',
+        hostname: 'images.pexels.com',
+      },
+      {
+        protocol: 'https',
+        hostname: 'www.pexels.com',
+      },
     ],
   },
 };
