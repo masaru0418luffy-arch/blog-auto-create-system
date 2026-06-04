@@ -31,12 +31,14 @@ export default function CompanyDetailClient({ company, initialBlogs }: Props) {
   const [blogs, setBlogs] = useState<Blog[]>(initialBlogs)
   const [generating, setGenerating] = useState(false)
   const [loadingImageIds, setLoadingImageIds] = useState<Set<string>>(new Set())
+  const [imageErrors, setImageErrors] = useState<Record<string, string>>({})
   const [error, setError] = useState('')
   const [copied, setCopied] = useState<string | null>(null)
   const router = useRouter()
 
   const generateImageForBlog = async (blog: Blog) => {
     setLoadingImageIds(prev => new Set(prev).add(blog.id))
+    setImageErrors(prev => ({ ...prev, [blog.id]: '' }))
     try {
       const res = await fetch('/api/generate-image', {
         method: 'POST',
@@ -49,13 +51,15 @@ export default function CompanyDetailClient({ company, initialBlogs }: Props) {
         }),
       })
       const data = await res.json()
+      if (!res.ok) throw new Error(data.error || '生成に失敗しました')
       if (data.imageUrl) {
         setBlogs(prev =>
           prev.map(b => b.id === blog.id ? { ...b, image_url: data.imageUrl } : b)
         )
       }
-    } catch {
-      // 失敗しても次の画像へ進む
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : '画像生成に失敗しました'
+      setImageErrors(prev => ({ ...prev, [blog.id]: message }))
     } finally {
       setLoadingImageIds(prev => {
         const next = new Set(prev)
@@ -201,14 +205,28 @@ export default function CompanyDetailClient({ company, initialBlogs }: Props) {
                       <p className="text-xs text-purple-300">約15秒かかります</p>
                     </div>
                   ) : (
-                    <div className="w-full h-32 bg-gray-50 flex flex-col items-center justify-center gap-2 border-b border-gray-100">
-                      <p className="text-xs text-gray-400">画像が生成されていません</p>
-                      <button
-                        onClick={() => generateImageForBlog(blog)}
-                        className="text-xs text-purple-600 border border-purple-200 px-3 py-1.5 rounded-lg hover:bg-purple-50 transition-colors"
-                      >
-                        🔄 画像を生成する
-                      </button>
+                    <div className="w-full h-32 bg-gray-50 flex flex-col items-center justify-center gap-2 border-b border-gray-100 px-4">
+                      {imageErrors[blog.id] ? (
+                        <>
+                          <p className="text-xs text-red-500 text-center">エラー: {imageErrors[blog.id]}</p>
+                          <button
+                            onClick={() => generateImageForBlog(blog)}
+                            className="text-xs text-purple-600 border border-purple-200 px-3 py-1.5 rounded-lg hover:bg-purple-50 transition-colors"
+                          >
+                            🔄 再試行する
+                          </button>
+                        </>
+                      ) : (
+                        <>
+                          <p className="text-xs text-gray-400">画像が生成されていません</p>
+                          <button
+                            onClick={() => generateImageForBlog(blog)}
+                            className="text-xs text-purple-600 border border-purple-200 px-3 py-1.5 rounded-lg hover:bg-purple-50 transition-colors"
+                          >
+                            🔄 画像を生成する
+                          </button>
+                        </>
+                      )}
                     </div>
                   )}
 

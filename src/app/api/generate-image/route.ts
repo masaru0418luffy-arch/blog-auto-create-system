@@ -20,12 +20,12 @@ Theme: ${title}. Category: ${category}.
 Realistic, clean, bright lighting. Japanese residential style.
 No text, no logos, no faces.`
 
-    // DALL-E 2（高速・Vercel Hobbyプラン対応）
+    // DALL-E 2（高速・512x512でタイムアウト回避）
     const response = await openai.images.generate({
       model: 'dall-e-2',
       prompt,
       n: 1,
-      size: '1024x1024',
+      size: '512x512',
     })
 
     const imageUrl = response.data?.[0]?.url
