@@ -15,7 +15,15 @@ const nextConfig: NextConfig = {
       },
       {
         protocol: 'https',
-        hostname: 'www.pexels.com',
+        hostname: 'fal.media',
+      },
+      {
+        protocol: 'https',
+        hostname: '*.fal.media',
+      },
+      {
+        protocol: 'https',
+        hostname: 'storage.googleapis.com',
       },
     ],
   },

@@ -15,38 +15,51 @@ export async function POST(req: NextRequest) {
       process.env.SUPABASE_SERVICE_ROLE_KEY!
     )
 
-    // GPT-4oで最適な検索キーワードを生成
-    const keywordRes = await openai.chat.completions.create({
+    // GPT-4oで施工現場写真風のプロンプトを生成
+    const promptRes = await openai.chat.completions.create({
       model: 'gpt-4o',
       messages: [{
         role: 'user',
-        content: `以下の日本語ブログ記事に最適な写真をPexelsで検索するための英語キーワードを生成してください。
+        content: `以下のブログ記事に合う施工現場写真を生成するための英語プロンプトを作成してください。
 タイトル：${title}
 カテゴリ：${category}
-条件：
-- 英語で3〜5単語
-- 建設・リフォーム・住宅関連の写真が検索できるキーワード
-- キーワードのみ返答（説明不要）
-例：exterior wall painting house japan`,
+要件：
+- 日本の住宅の施工・リフォーム・造園の現場写真のような雰囲気
+- スマートフォンで撮影したリアルなドキュメンタリー写真スタイル
+- 自然光、現場感あり、人物なし
+- 英語で80文字以内
+プロンプトのみ返してください（説明不要）。`,
       }],
-      max_tokens: 30,
+      max_tokens: 80,
     })
 
-    const searchQuery = keywordRes.choices[0].message.content?.trim() || `${category} house renovation japan`
+    const imagePrompt = promptRes.choices[0].message.content?.trim() ||
+      `Japanese ${category} construction work, realistic site photo, natural lighting, no people, documentary style`
 
-    // Pexelsで写真を検索
-    const pexelsRes = await fetch(
-      `https://api.pexels.com/v1/search?query=${encodeURIComponent(searchQuery)}&per_page=5&orientation=landscape`,
-      { headers: { Authorization: process.env.PEXELS_API_KEY! } }
-    )
+    // fal.ai FLUX/schnellで画像生成（高速・2〜4秒）
+    const falRes = await fetch('https://fal.run/fal-ai/flux/schnell', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Key ${process.env.FAL_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        prompt: imagePrompt,
+        image_size: 'landscape_4_3',
+        num_inference_steps: 4,
+        num_images: 1,
+        enable_safety_checker: true,
+      }),
+    })
 
-    if (!pexelsRes.ok) throw new Error('Pexelsからの画像取得に失敗しました')
+    if (!falRes.ok) {
+      const errData = await falRes.json()
+      throw new Error(errData.detail || `fal.ai エラー: ${falRes.status}`)
+    }
 
-    const pexelsData = await pexelsRes.json()
-    const photo = pexelsData.photos?.[0]
-    if (!photo) throw new Error(`「${searchQuery}」に一致する画像が見つかりませんでした`)
-
-    const imageUrl = photo.src.large2x || photo.src.large || photo.src.medium
+    const falData = await falRes.json()
+    const imageUrl = falData.images?.[0]?.url
+    if (!imageUrl) throw new Error('画像URLが取得できませんでした')
 
     // DBに保存
     await supabase
@@ -54,9 +67,9 @@ export async function POST(req: NextRequest) {
       .update({ image_url: imageUrl })
       .eq('id', blogId)
 
-    return NextResponse.json({ imageUrl, photographer: photo.photographer, searchQuery })
+    return NextResponse.json({ imageUrl })
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : '画像取得に失敗しました'
+    const message = error instanceof Error ? error.message : '画像生成に失敗しました'
     return NextResponse.json({ error: message }, { status: 500 })
   }
 }
