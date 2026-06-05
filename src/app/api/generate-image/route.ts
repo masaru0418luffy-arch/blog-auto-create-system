@@ -19,8 +19,8 @@ const categoryKeywords: Record<string, string> = {
   '施工': 'Japanese construction work site, materials and tools visible, work in progress, no people, raw smartphone photo, natural light, imperfect angle, documentary style',
   '雨樋工事': 'close-up of Japanese house rain gutter installation, ladder against residential house wall, gutter and brackets visible, no people, raw smartphone photo by worker, natural daylight, tight framing',
   '塗装': 'close-up of Japanese residential house exterior being painted, paint roller on wall, paint bucket nearby, no people, raw smartphone photo, natural light, tight framing',
-  '板金': 'close-up of Japanese residential house sheet metal roofing work, metal panels and flashing on roof edge, tools nearby, no people, raw smartphone photo by worker, natural daylight, tight close-up shot',
-  '板金工事': 'close-up of Japanese residential house sheet metal flashing or gutter work, metal panels visible, no people, raw smartphone photo, natural daylight, tight framing, residential house only not commercial',
+  '板金': 'Japanese residential house roof with sheet metal flashing work, medium shot from rooftop level showing roof slope and surrounding neighborhood, metal panels installed on roof edge, no people, raw smartphone photo by worker standing on roof, natural daylight, residential house visible',
+  '板金工事': 'Japanese residential house roof sheet metal work in progress, medium shot from rooftop showing the whole roof slope with metal flashing, surrounding houses visible, no people, raw smartphone photo taken by worker on roof, natural daylight, realistic job site',
 }
 
 export async function POST(req: NextRequest) {
@@ -39,7 +39,7 @@ export async function POST(req: NextRequest) {
     const baseKeyword = categoryKeywords[category] ||
       `Japanese ${category} construction work, realistic documentary photo, no people`
 
-    const imagePrompt = `${baseKeyword}. Close-up shot, tight framing, Japanese residential house only not commercial building, shot on iPhone, candid documentary style, not artistic, not professional photography, raw authentic construction site, grainy texture, real world imperfections.`
+    const imagePrompt = `${baseKeyword}. Medium distance shot showing work in context of Japanese residential house, not too close not too wide, shot on iPhone by worker, candid documentary style, not artistic, not staged, raw authentic job site, real world imperfections, residential neighborhood visible.`
 
     // fal.ai FLUX/schnellで画像生成
     const falRes = await fetch('https://fal.run/fal-ai/flux/schnell', {
