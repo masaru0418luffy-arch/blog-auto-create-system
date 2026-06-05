@@ -39,6 +39,8 @@ export default function CompanyDetailClient({ company, initialBlogs }: Props) {
   const generateImageForBlog = async (blog: Blog) => {
     setLoadingImageIds(prev => new Set(prev).add(blog.id))
     setImageErrors(prev => ({ ...prev, [blog.id]: '' }))
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), 30000)
     try {
       const res = await fetch('/api/generate-image', {
         method: 'POST',
@@ -49,7 +51,9 @@ export default function CompanyDetailClient({ company, initialBlogs }: Props) {
           category: blog.category,
           companyId: company.id,
         }),
+        signal: controller.signal,
       })
+      clearTimeout(timeoutId)
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || '生成に失敗しました')
       if (data.imageUrl) {
@@ -58,7 +62,10 @@ export default function CompanyDetailClient({ company, initialBlogs }: Props) {
         )
       }
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : '画像生成に失敗しました'
+      clearTimeout(timeoutId)
+      const message = err instanceof Error
+        ? (err.name === 'AbortError' ? 'タイムアウトしました。再試行してください。' : err.message)
+        : '画像生成に失敗しました'
       setImageErrors(prev => ({ ...prev, [blog.id]: message }))
     } finally {
       setLoadingImageIds(prev => {
@@ -135,7 +142,7 @@ export default function CompanyDetailClient({ company, initialBlogs }: Props) {
         {imageGeneratingCount > 0 && (
           <p className="text-sm text-purple-600 mt-3 flex items-center justify-center gap-2">
             <span className="animate-spin inline-block">⟳</span>
-            DALL-E 3で画像を生成中...（約15〜20秒）
+            FLUX (fal.ai) で画像を生成中...（約15〜20秒）
           </p>
         )}
       </div>
@@ -197,7 +204,7 @@ export default function CompanyDetailClient({ company, initialBlogs }: Props) {
                   ) : isImageLoading ? (
                     <div className="w-full h-52 bg-purple-50 flex flex-col items-center justify-center gap-2 border-b border-purple-100">
                       <span className="animate-spin text-2xl inline-block text-purple-400">⟳</span>
-                      <p className="text-sm text-purple-500 font-medium">DALL-E 3で画像を生成中...</p>
+                      <p className="text-sm text-purple-500 font-medium">FLUX (fal.ai) で画像を生成中...</p>
                       <p className="text-xs text-purple-300">約15秒かかります</p>
                     </div>
                   ) : (

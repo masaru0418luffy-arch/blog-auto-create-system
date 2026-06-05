@@ -1,6 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
-import OpenAI from 'openai'
+
+// カテゴリ→英語キーワードのマッピング（GPT-4o呼び出しを省いて高速化）
+const categoryKeywords: Record<string, string> = {
+  '外壁塗装': 'Japanese house exterior wall painting renovation, realistic photo',
+  '屋根補修': 'Japanese roof repair construction work, realistic site photo',
+  '屋根工事': 'Japanese roof construction tiles repair, realistic photo',
+  '防水工事': 'waterproofing construction work Japan, realistic site photo',
+  '内装リフォーム': 'Japanese interior renovation remodeling, realistic photo',
+  'リフォーム': 'Japanese home renovation construction, realistic photo',
+  '造園': 'Japanese garden landscaping work, realistic photo',
+  '草刈り': 'lawn mowing grass cutting Japan, realistic site photo',
+  '剪定': 'tree pruning garden work Japan, realistic photo',
+  '伐採': 'tree cutting removal Japan, realistic site photo',
+  '雑草対策': 'weed control prevention Japan garden, realistic photo',
+  '外構工事': 'Japanese exterior construction driveway, realistic photo',
+  'サポート': 'Japanese construction maintenance work, realistic photo',
+  '施工': 'Japanese construction renovation work site, realistic photo',
+}
 
 export async function POST(req: NextRequest) {
   try {
@@ -9,34 +26,18 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'パラメータが不足しています' }, { status: 400 })
     }
 
-    const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
     const supabase = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.SUPABASE_SERVICE_ROLE_KEY!
     )
 
-    // GPT-4oで施工現場写真風のプロンプトを生成
-    const promptRes = await openai.chat.completions.create({
-      model: 'gpt-4o',
-      messages: [{
-        role: 'user',
-        content: `以下のブログ記事に合う施工現場写真を生成するための英語プロンプトを作成してください。
-タイトル：${title}
-カテゴリ：${category}
-要件：
-- 日本の住宅の施工・リフォーム・造園の現場写真のような雰囲気
-- スマートフォンで撮影したリアルなドキュメンタリー写真スタイル
-- 自然光、現場感あり、人物なし
-- 英語で80文字以内
-プロンプトのみ返してください（説明不要）。`,
-      }],
-      max_tokens: 80,
-    })
+    // カテゴリからキーワードを取得（GPT-4o不要で高速）
+    const baseKeyword = categoryKeywords[category] ||
+      `Japanese ${category} construction work, realistic documentary photo, no people`
 
-    const imagePrompt = promptRes.choices[0].message.content?.trim() ||
-      `Japanese ${category} construction work, realistic site photo, natural lighting, no people, documentary style`
+    const imagePrompt = `${baseKeyword}. Natural daylight, on-site documentation style, slightly imperfect composition like smartphone photo, high quality realistic photograph.`
 
-    // fal.ai FLUX/schnellで画像生成（高速・2〜4秒）
+    // fal.ai FLUX/schnellで画像生成
     const falRes = await fetch('https://fal.run/fal-ai/flux/schnell', {
       method: 'POST',
       headers: {
@@ -48,20 +49,19 @@ export async function POST(req: NextRequest) {
         image_size: 'landscape_4_3',
         num_inference_steps: 4,
         num_images: 1,
-        enable_safety_checker: true,
+        enable_safety_checker: false,
       }),
     })
 
     if (!falRes.ok) {
-      const errData = await falRes.json()
-      throw new Error(errData.detail || `fal.ai エラー: ${falRes.status}`)
+      const errData = await falRes.json().catch(() => ({}))
+      throw new Error((errData as { detail?: string }).detail || `fal.ai エラー: ${falRes.status}`)
     }
 
     const falData = await falRes.json()
-    const imageUrl = falData.images?.[0]?.url
+    const imageUrl = (falData as { images?: { url: string }[] }).images?.[0]?.url
     if (!imageUrl) throw new Error('画像URLが取得できませんでした')
 
-    // DBに保存
     await supabase
       .from('generated_blogs')
       .update({ image_url: imageUrl })
