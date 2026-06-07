@@ -13,10 +13,33 @@ interface Blog {
 
 interface Props {
   blogs: Blog[]
+  companyName: string
 }
 
-export default function HistoryArticles({ blogs }: Props) {
+export default function HistoryArticles({ blogs, companyName }: Props) {
   const [copied, setCopied] = useState<string | null>(null)
+  const [exporting, setExporting] = useState(false)
+  const [exportStatus, setExportStatus] = useState<'idle' | 'success' | 'error'>('idle')
+
+  const exportToSheets = async () => {
+    setExporting(true)
+    setExportStatus('idle')
+    try {
+      const res = await fetch('/api/export-to-sheets', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ blogs, companyName }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'エクスポート失敗')
+      setExportStatus('success')
+    } catch {
+      setExportStatus('error')
+    } finally {
+      setExporting(false)
+      setTimeout(() => setExportStatus('idle'), 3000)
+    }
+  }
 
   const copyToClipboard = async (text: string, id: string) => {
     await navigator.clipboard.writeText(text)
@@ -39,7 +62,20 @@ export default function HistoryArticles({ blogs }: Props) {
 
   return (
     <div>
-      <div className="flex justify-end mb-4">
+      <div className="flex justify-end gap-2 mb-4">
+        <button
+          onClick={exportToSheets}
+          disabled={exporting}
+          className="bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-green-700 transition-colors disabled:opacity-50"
+        >
+          {exporting
+            ? '書き出し中...'
+            : exportStatus === 'success'
+            ? '✓ 書き出し完了'
+            : exportStatus === 'error'
+            ? '✗ 失敗'
+            : 'スプレッドシートへ置換'}
+        </button>
         <button
           onClick={copyAll}
           className="bg-gray-800 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-900 transition-colors"

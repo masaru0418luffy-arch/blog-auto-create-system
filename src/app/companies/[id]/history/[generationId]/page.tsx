@@ -78,7 +78,7 @@ export default async function HistoryPage({
               </span>
             </div>
 
-            <HistoryArticles blogs={blogs || []} />
+            <HistoryArticles blogs={blogs || []} companyName={company.name} />
           </div>
         </div>
       </main>

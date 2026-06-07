@@ -34,13 +34,37 @@ export default function CompanyDetailClient({ company, initialBlogs }: Props) {
   const [imageErrors, setImageErrors] = useState<Record<string, string>>({})
   const [error, setError] = useState('')
   const [copied, setCopied] = useState<string | null>(null)
+  const [exporting, setExporting] = useState(false)
+  const [exportStatus, setExportStatus] = useState<'idle' | 'success' | 'error'>('idle')
   const router = useRouter()
+
+  const exportToSheets = async () => {
+    setExporting(true)
+    setExportStatus('idle')
+    try {
+      const res = await fetch('/api/export-to-sheets', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ blogs, companyName: company.name }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'エクスポート失敗')
+      setExportStatus('success')
+    } catch {
+      setExportStatus('error')
+    } finally {
+      setExporting(false)
+      setTimeout(() => setExportStatus('idle'), 3000)
+    }
+  }
 
   const generateImageForBlog = async (blog: Blog) => {
     setLoadingImageIds(prev => new Set(prev).add(blog.id))
     setImageErrors(prev => ({ ...prev, [blog.id]: '' }))
+    // 再生成時は一時的に画像を非表示にしてローディングを確実に表示
+    setBlogs(prev => prev.map(b => b.id === blog.id ? { ...b, image_url: null } : b))
     const controller = new AbortController()
-    const timeoutId = setTimeout(() => controller.abort(), 30000)
+    const timeoutId = setTimeout(() => controller.abort(), 60000)
     try {
       const res = await fetch('/api/generate-image', {
         method: 'POST',
@@ -160,6 +184,19 @@ export default function CompanyDetailClient({ company, initialBlogs }: Props) {
             <h2 className="text-lg font-semibold text-gray-700">生成された記事（{blogs.length}本）</h2>
             <div className="flex gap-2">
               <button
+                onClick={exportToSheets}
+                disabled={exporting}
+                className="bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-green-700 transition-colors disabled:opacity-50"
+              >
+                {exporting
+                  ? '書き出し中...'
+                  : exportStatus === 'success'
+                  ? '✓ 書き出し完了'
+                  : exportStatus === 'error'
+                  ? '✗ 失敗'
+                  : 'スプレッドシートへ置換'}
+              </button>
+              <button
                 onClick={copyAll}
                 className="bg-gray-800 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-900 transition-colors"
               >
@@ -187,11 +224,11 @@ export default function CompanyDetailClient({ company, initialBlogs }: Props) {
                         src={blog.image_url}
                         alt={blog.title}
                         fill
-                        className="object-cover"
+                        className="object-cover pointer-events-none"
                         sizes="(max-width: 768px) 100vw, 800px"
                       />
                       {/* ホバー時に再生成ボタンを表示 */}
-                      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-all flex items-center justify-center">
+                      <div className="absolute inset-0 z-10 bg-black/0 group-hover:bg-black/30 transition-all flex items-center justify-center">
                         <button
                           onClick={() => generateImageForBlog(blog)}
                           disabled={isImageLoading}

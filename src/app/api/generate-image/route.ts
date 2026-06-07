@@ -63,8 +63,38 @@ export async function POST(req: NextRequest) {
     }
 
     const falData = await falRes.json()
-    const imageUrl = (falData as { images?: { url: string }[] }).images?.[0]?.url
-    if (!imageUrl) throw new Error('画像URLが取得できませんでした')
+    const falImageUrl = (falData as { images?: { url: string }[] }).images?.[0]?.url
+    if (!falImageUrl) throw new Error('画像URLが取得できませんでした')
+
+    // fal.aiから画像をダウンロードしてSupabaseに永続保存
+    const imgRes = await fetch(falImageUrl)
+    if (!imgRes.ok) throw new Error('fal.ai画像のダウンロードに失敗しました')
+    const imgBuffer = await imgRes.arrayBuffer()
+
+    // バケットが存在しない場合は作成
+    const { data: buckets } = await supabase.storage.listBuckets()
+    const bucketExists = buckets?.some(b => b.name === 'blog-images')
+    if (!bucketExists) {
+      const { error: bucketError } = await supabase.storage.createBucket('blog-images', { public: true })
+      if (bucketError) throw new Error(`バケット作成失敗: ${bucketError.message}`)
+    }
+
+    const timestamp = Date.now()
+    const fileName = `${companyId}/${blogId}-${timestamp}.jpg`
+    const { error: uploadError } = await supabase.storage
+      .from('blog-images')
+      .upload(fileName, imgBuffer, {
+        contentType: 'image/jpeg',
+        upsert: false,
+      })
+
+    if (uploadError) throw new Error(`Supabaseアップロード失敗: ${uploadError.message}`)
+
+    const { data: urlData } = supabase.storage
+      .from('blog-images')
+      .getPublicUrl(fileName)
+
+    const imageUrl = urlData.publicUrl
 
     await supabase
       .from('generated_blogs')
@@ -73,6 +103,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ imageUrl })
   } catch (error: unknown) {
+    console.error('Generate image error:', error)
     const message = error instanceof Error ? error.message : '画像生成に失敗しました'
     return NextResponse.json({ error: message }, { status: 500 })
   }
